@@ -224,7 +224,7 @@ function renderSorteo(){
   if(differs) h += `<div class="pend">✏️ Hay cambios sin publicar (tabla, pedidos o semilla).</div>`;
   const dis = (!cloud.c || srt.busy || !okAll) ? ' disabled' : '';
   h += `<button type="button" class="close-btn" data-srt="test"${dis}>🧪 Publicar y abrir una PRUEBA (con otra semilla, para probar con 2 o 3 teléfonos)</button>
-    <button type="button" class="close-btn" data-srt="pub"${dis}>🔒 Publicar el sorteo real sin abrir (los DT ven «todavía no abre» y la semilla)</button>
+    <button type="button" class="close-btn" data-srt="pub"${dis}>🔒 Publicar el sorteo real sin abrir (los DT ven «todavía no abre»)</button>
     <button type="button" class="close-btn" data-srt="open"${dis} style="background:var(--green);color:#fff;border-color:transparent">🟢 Abrir el sorteo real</button>
     <button type="button" class="close-btn" data-srt="close"${(!cloud.c || srt.busy || !c || !c.open) ? ' disabled' : ''} style="background:var(--red);color:#fff;border-color:transparent">⛔ Cerrar el sorteo</button>`;
   if(c){
@@ -347,7 +347,9 @@ document.getElementById('sorteoBox').addEventListener('click', async e=>{
   else if(a === 'newseed') srtEdit(d=>{ d.seed = srtSeed(); });
   else if(a === 'abre'){ d.abre = document.getElementById('srtAbre').value.trim(); srtSave(); renderSorteo(); toast('Guardado'); }
   else if(a === 'test'){
-    if(srtLocked()){ toast('El sorteo real ya está publicado: no se puede usar para pruebas'); return; }
+    const cr = srt.cfg;
+    if(cr && !cr.test && cr.open){ toast('El sorteo real está ABIERTO: ciérralo antes de hacer una prueba'); return; }
+    if(cr && !cr.test && cr.closedAt && !confirm('El sorteo real está cerrado. La prueba ocupa el mismo link y borra el panel en vivo del sorteo real (los horarios del sorteo real no cambian: los fija su semilla).\n\nCuando termines la prueba, pulsa «🔒 Publicar el sorteo real» para volver a dejarlo.\n\n¿Hacer la prueba?')) return;
     const real = d.seed; d.seed = 'PRUEBA' + srtSeed().slice(0,3); d.topic = srtTopic();
     const ok = await srtPublish({test:true, open:true, closedAt:0, topic:d.topic}, 'Prueba abierta: abre el link en 2 o 3 teléfonos');
     d.seed = real; srtSave(); renderSorteo(); if(!ok) return;
