@@ -286,6 +286,7 @@ function liveConnect(topic){
 function liveDrawn(){
   const res = LIVE.res, out = new Map(); if(!res) return out;
   Array.from(LIVE.msgs.values()).sort((a,b)=>a.t-b.t).forEach(({t, x})=>{
+    if(x && x.k === 'fill' && x.seed === LIVE.cfg.seed && Array.isArray(x.mis)){ x.mis.forEach(mi=>{ if(Number.isInteger(mi) && res.matches[mi] && !out.has(mi)) out.set(mi, {by:-1, at:t*1000}); }); return; }
     if(!x || x.k !== 'draw' || x.seed !== LIVE.cfg.seed || !Number.isInteger(x.mi) || !res.matches[x.mi] || out.has(x.mi)) return;
     const m = res.matches[x.mi]; if(x.by !== m.a && x.by !== m.b) return;
     out.set(x.mi, {by:x.by, at:(x.at && Math.abs(x.at - t*1000) < 6e5) ? x.at : t*1000});
@@ -300,23 +301,38 @@ function liveRender(){
   const est = c.test ? 'Prueba' : c.open ? 'Abierto' : c.closedAt ? 'Cerrado' : 'Sin abrir';
   let h = `<div class="live-h"><span class="ttl">📡 En vivo</span><span class="live-n">${tot}<small> / 48</small></span><span class="pill"><i class="dot${LIVE.on ? ' on' : ''}"></i>${LIVE.on ? 'Conectado' : 'Conectando…'} · ${est}</span></div>`;
   h += `<div class="live-bars">${per.map((n,j)=>`<div class="bar"><span>Fecha ${j+1}</span><span class="tr"><i style="width:${Math.round(n/16*100)}%"></i></span><b>${n}/16</b></div>`).join('')}</div>`;
+  const pend = res.matches.map((m,i)=>i).filter(i=>!D.has(i));
+  if(pend.length && (c.open || c.test)) h += `<button type="button" class="close-btn" data-fill="1" style="background:#E5322D;color:#fff;border-color:transparent">⚡ Completar faltantes (${pend.length} partido${pend.length===1?'':'s'})</button><p class="fecha-sub" style="margin:-2px 0 10px">Para los clubes que no están presentes: saca de una vez todos los partidos que faltan. Aparecen en el panel de todos como «sorteado por el organizador». No cambia ningún resultado: los fija la semilla.</p>`;
   h += `<div class="srt-chips">${[0,1,2].map(j=>`<button type="button" class="qchip${j===f?' on':''}" data-lf="${j}">Fecha ${j+1}</button>`).join('')}</div>`;
   [0,1,2].forEach(d=>{
     const sls = K.SLOTS.filter(s=>s.dayIdx===d).sort((a,b)=>a.hour-b.hour || (a.st===b.st ? 0 : a.st==='SM' ? -1 : 1));
     h += `<div class="live-day">${K.DAYS[d]} ${c.dates && c.dates[f] ? c.dates[f][d] + ' nov' : ''}</div>`;
     sls.forEach(sl=>{
       const mi = res.matches.findIndex(m=>m.j===f && m.slot.id===sl.id), m = res.matches[mi], x = D.get(mi);
-      h += `<div class="live-row${x ? ' done' : ''}"><span class="t">${sl.time}</span><span class="chip ${sl.st}">${sl.st === 'SM' ? 'San Miguel' : 'Los Sauces'}</span><span class="vs">${esc(T[m.a].name)} <i>vs</i> ${esc(T[m.b].name)} <small class="fecha-sub">${m.cup} G${m.g+1}</small></span><span class="st">${x ? '✅ ' + esc(T[x.by].name) + ' · ' + hh(x.at) : '⏳'}</span></div>`;
+      h += `<div class="live-row${x ? ' done' : ''}"><span class="t">${sl.time}</span><span class="chip ${sl.st}">${sl.st === 'SM' ? 'San Miguel' : 'Los Sauces'}</span><span class="vs">${esc(T[m.a].name)} <i>vs</i> ${esc(T[m.b].name)} <small class="fecha-sub">${m.cup} G${m.g+1}</small></span><span class="st">${x ? (x.by === -1 ? '⚡ Organizador' : '✅ ' + esc(T[x.by].name)) + ' · ' + hh(x.at) : '⏳'}</span></div>`;
     });
   });
   const done = T.map(t=>res.matches.filter((m,i)=>(m.a===t.id||m.b===t.id) && D.has(i)).length);
   const falta = T.filter(t=>done[t.id] < 3);
   h += `<div class="live-day">Clubes que aún no terminan (${falta.length})</div><div class="srt-chips">${falta.map(t=>`<span class="qchip">${esc(t.name)} · ${done[t.id]}/3</span>`).join('') || '<span class="fecha-sub">Todos sacaron sus 3 fechas 🎉</span>'}</div>`;
   const rec = Array.from(D.entries()).sort((a,b)=>b[1].at-a[1].at).slice(0,10);
-  h += `<div class="live-day">Últimos sorteos</div>${rec.length ? rec.map(([mi,x])=>{ const m = res.matches[mi], o = m.a===x.by ? m.b : m.a; return `<div class="live-feed"><b>${hh(x.at)}</b> ${esc(T[x.by].name)} sacó la Fecha ${m.j+1}: vs ${esc(T[o].name)}, ${m.slot.day} ${m.slot.time}, ${m.st === 'SM' ? 'San Miguel' : 'Los Sauces'}</div>`; }).join('') : '<p class="fecha-sub">Todavía nadie ha sorteado.</p>'}`;
+  h += `<div class="live-day">Últimos sorteos</div>${rec.length ? rec.map(([mi,x])=>{ const m = res.matches[mi], o = m.a===x.by ? m.b : m.a; if(x.by === -1) return `<div class="live-feed"><b>${hh(x.at)}</b> ⚡ Organizador completó la Fecha ${m.j+1}: ${esc(T[m.a].name)} vs ${esc(T[m.b].name)}, ${m.slot.day} ${m.slot.time}</div>`; return `<div class="live-feed"><b>${hh(x.at)}</b> ${esc(T[x.by].name)} sacó la Fecha ${m.j+1}: vs ${esc(T[o].name)}, ${m.slot.day} ${m.slot.time}, ${m.st === 'SM' ? 'San Miguel' : 'Los Sauces'}</div>`; }).join('') : '<p class="fecha-sub">Todavía nadie ha sorteado.</p>'}`;
   box.innerHTML = h;
 }
-document.getElementById('liveAdm').addEventListener('click', e=>{ const b = e.target.closest('[data-lf]'); if(b){ LIVE.f = +b.dataset.lf; liveRender(); } });
+document.getElementById('liveAdm').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-lf]'); if(b){ LIVE.f = +b.dataset.lf; liveRender(); return; }
+  const fb = e.target.closest('[data-fill]'); if(!fb || fb.disabled) return;
+  const D = liveDrawn(), mis = LIVE.res.matches.map((m,i)=>i).filter(i=>!D.has(i));
+  if(!mis.length) return;
+  const clubs = LIVE.K.TEAMS.filter(t=>LIVE.res.matches.some((m,i)=>(m.a===t.id||m.b===t.id) && !D.has(i))).map(t=>t.name);
+  if(!confirm(`¿Completar los ${mis.length} partidos que faltan?\n\nClubes con fechas pendientes (${clubs.length}): ${clubs.join(', ')}.\n\nSe verán en el panel de todos como «sorteado por el organizador».`)) return;
+  fb.disabled = true; fb.textContent = 'Enviando…';
+  try{
+    const r = await fetch('https://ntfy.sh/' + encodeURIComponent(LIVE.cfg.topic), {method:'POST', body:JSON.stringify({k:'fill', seed:LIVE.cfg.seed, mis, at:Date.now()})});
+    if(!r.ok) throw new Error('http ' + r.status);
+    toast('⚡ Faltantes completados: ' + mis.length + ' partidos');
+  }catch(err){ toast('No se pudo enviar. Revisa internet e inténtalo de nuevo.'); fb.disabled = false; liveRender(); }
+});
 document.getElementById('sorteoBox').addEventListener('click', async e=>{
   const b = e.target.closest('[data-srt]'); if(!b || b.disabled) return;
   const a = b.dataset.srt, d = srtDraft();

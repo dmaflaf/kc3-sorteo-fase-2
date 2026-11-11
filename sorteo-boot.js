@@ -81,7 +81,7 @@ function start(cfg) {
     const id = state.me, rival = m.a === id ? m.b : m.a, by = state.drawnBy[mi];
     return '<div class="th"><span class="tf">' + fl(m.j) + '</span><span class="chip ' + m.st + '">' + ST_NAME[m.st] + '</span></div><div class="td"><span class="dd">' + m.slot.day +
       (dateOf(m.j, m.slot.dayIdx) ? ' ' + esc(dateOf(m.j, m.slot.dayIdx)) : '') + '</span><span class="tt">' + m.slot.time + '</span></div><div class="tr">vs <b>' + esc(TEAMS[rival].name) + '</b>' +
-      (by !== undefined && by !== id ? ' · lo sacó ' + esc(TEAMS[by].name) : '') + '</div>';
+      (by === -1 ? ' · sorteado por el organizador' : by !== undefined && by !== id ? ' · lo sacó ' + esc(TEAMS[by].name) : '') + '</div>';
   }
   function gateHtml() {
     return '<h2 class="step">Entra con el código de tu club</h2>' +
@@ -447,6 +447,7 @@ function start(cfg) {
     h += '<h3 class="lday">Últimos sorteos</h3>';
     h += recent.length ? '<ul class="feed">' + recent.map(mi => {
       const m = res.matches[mi], by = state.drawnBy[mi], other = m.a === by ? m.b : m.a;
+      if (by === -1) return '<li><time>' + fmtTime(state.drawAt[mi]) + '</time><b>Organizador</b> completó ' + fl(m.j).toLowerCase() + ': ' + esc(TEAMS[m.a].name) + ' vs ' + esc(TEAMS[m.b].name) + ', ' + m.slot.day + ' ' + m.slot.time + ', ' + ST_NAME[m.st] + '</li>';
       return '<li><time>' + fmtTime(state.drawAt[mi]) + '</time><b>' + esc(TEAMS[by !== undefined ? by : m.a].name) + '</b> sacó ' + fl(m.j).toLowerCase() + ': vs ' + esc(TEAMS[other].name) + ', ' + m.slot.day + ' ' + m.slot.time + ', ' + ST_NAME[m.st] + '</li>';
     }).join('') + '</ul>' : '<p class="hint">Todavía nadie ha sorteado.</p>';
     v.innerHTML = h;
@@ -471,6 +472,10 @@ function start(cfg) {
     if (state.busy) { NET.pendingApply = true; renderLive(); return; }
     const list = Array.from(NET.msgs.values()).sort((a, b) => a.t - b.t);
     list.forEach(({ t, x }) => {
+      if (x && x.k === 'fill' && x.seed === cfg.seed && Array.isArray(x.mis)) {   /* el organizador completó los que faltaban */
+        x.mis.forEach(mi => { if (Number.isInteger(mi) && res.matches[mi] && !state.shown.has(mi)) { state.shown.add(mi); state.drawnBy[mi] = -1; state.drawAt[mi] = t * 1000; } });
+        return;
+      }
       if (!x || x.k !== 'draw' || x.seed !== cfg.seed || !Number.isInteger(x.mi) || !res.matches[x.mi]) return;
       const m = res.matches[x.mi];
       if (x.by !== m.a && x.by !== m.b) return;          // solo uno de los dos clubes del partido puede sacarlo
