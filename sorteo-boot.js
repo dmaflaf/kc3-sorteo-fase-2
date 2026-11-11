@@ -33,8 +33,7 @@ function banner() {
 }
 function waitHtml(c) {
   return '<div class="gatewait"><p class="lbl">Sorteo Fase 2</p><p class="big">Todavía no abre</p><p class="dt-sub" style="margin-top:0">' +
-    esc(c && c.abre ? 'Se abre ' + c.abre + '.' : 'El organizador todavía no abrió el sorteo.') + ' Deja esta página abierta: se activa sola.</p>' +
-    (c && c.seed ? '<p class="seedbox">Semilla anunciada: <b>' + esc(c.seed) + '</b></p>' : '') + '</div>';
+    esc(c && c.abre ? 'Se abre ' + c.abre + '.' : 'El organizador todavía no abrió el sorteo.') + ' Deja esta página abierta: se activa sola.</p></div>';
 }
 async function boot() {
   try { CFG = await fetchCfg(); }
@@ -61,7 +60,7 @@ function start(cfg) {
   if (!res) { $('#dtView').innerHTML = '<p class="banner">La configuración del sorteo no es válida. Avisa al organizador.</p>'; return; }
   const SHORT_DAY = ['Vie', 'Sáb', 'Dom'];
   const F0 = KCDraw.FECHA0;
-  const fl = j => 'Fecha ' + (F0 + j);
+  const fl = j => 'Fecha ' + (j + 1);          /* fechas 1, 2 y 3 de la Fase 2 (8, 9 y 10 del torneo) */
   const dateOf = (j, d) => (cfg.dates && cfg.dates[j] ? cfg.dates[j][d] + ' ' + (cfg.mes || 'nov') : '');
   const state = { me: null, open: -1, dtMode: 'wheel', shown: new Set(), drawnBy: {}, drawAt: {}, liveF: 0, mapClub: -1, busy: false, skip: null };
   const SLOT_ORDER = SLOTS.slice().sort((a, b) => a.dayIdx - b.dayIdx || a.hour - b.hour || (a.st === b.st ? 0 : a.st === 'SM' ? -1 : 1));
@@ -74,8 +73,7 @@ function start(cfg) {
   function groupCard(cup, g, me) {
     let h = '<div class="gcard"><h4>Grupo ' + (g + 1) + '</h4><ol>';
     TEAMS.filter(t => t.cup === cup && t.g === g).forEach(t => {
-      h += '<li' + (t.id === me ? ' class="me"' : '') + '><span class="gp">' + t.rank + 'º ' + t.from + '</span><b>' + esc(t.name) + '</b>' +
-        (cup === 'Plata' && t.p >= 2 ? '<small>sin viernes</small>' : '') + '</li>';
+      h += '<li' + (t.id === me ? ' class="me"' : '') + '><span class="gp">' + t.rank + 'º ' + t.from + '</span><b>' + esc(t.name) + '</b></li>';
     });
     return h + '</ol></div>';
   }
@@ -90,7 +88,7 @@ function start(cfg) {
       '<p class="dt-sub" style="margin-top:0">El organizador te mandó por WhatsApp este link y un código personal (por ejemplo LEG2). El código dice qué club eres.</p>' +
       '<form id="gateForm" class="seedrow" autocomplete="off" style="margin-top:16px"><div class="f"><label for="gateCode">Código del club</label>' +
       '<input id="gateCode" maxlength="8" spellcheck="false" autocapitalize="characters"></div><button type="submit" class="btn1 go2">Entrar</button></form>' +
-      '<p class="rmsg" id="gateMsg" role="alert"></p><p class="seedbox">Semilla del sorteo: <b>' + esc(cfg.seed) + '</b></p>' +
+      '<p class="rmsg" id="gateMsg" role="alert"></p>' +
       (cfg.test ? '<p class="hint">Prueba: usa por ejemplo ' + [0, 9, 21].map(i => '<b>' + CODES[i] + '</b> (' + esc(TEAMS[i].name) + ')').join(', ') + '.</p>' : '');
   }
   function wheelSvg() {
@@ -115,7 +113,7 @@ function start(cfg) {
     h += '<div class="legend2"><span><i style="background:var(--sm)"></i>San Miguel</span><span><i style="background:var(--sa)"></i>Los Sauces</span></div>';
     if (!wheel && !done) h += '<div class="row" style="justify-content:center"><button type="button" class="btn1 go2" id="spinGo">Sacar bolita</button></div>';
     h += '<div class="row" style="justify-content:center"><button type="button" class="btn2" id="skipGo" hidden>Saltar animación</button></div>';
-    h += '<p class="hint">Son los 16 horarios de la fecha. Rival y horario salen juntos. El resultado ya lo fija la semilla del sorteo; ' + (wheel ? 'la rueda' : 'el bolillero') + ' solo lo muestra.</p>';
+    h += '<p class="hint">Son los 16 horarios de la fecha. Rival, día, hora y estadio salen juntos.</p>';
     h += '<div id="drawRes">' + (done ? '<div class="ti resbox">' + resultBlock(m, mi) + '</div><div class="row" style="justify-content:center"><button type="button" class="btn1 go2" data-act="close">Listo</button></div>' : '') + '</div></div>';
     return h;
   }
@@ -124,10 +122,8 @@ function start(cfg) {
     const v = $('#dtView');
     if (state.me === null) { v.innerHTML = gateHtml(); return; }
     const id = state.me, t = TEAMS[id], ms = teamMatches(id);
-    const fri = (t.cup === 'Oro' || t.p < 2) ? 'Juegas un viernes en esta fase.' : 'No juegas viernes: tus 3 partidos son sábado o domingo. Es la regla para los 7º y 8º de la tabla en Copa Plata.';
     let h = '<div class="who"><div><p class="lbl">Hola, DT de</p><h2 class="club">' + esc(t.name) + '</h2><p class="tmeta">Copa ' + t.cup + ' · Grupo ' + (t.g + 1) + ' · ' + t.rank + 'º del grupo ' + t.from +
-      '</p></div><button type="button" class="linkbtn" data-act="logout">Salir</button></div><p style="margin:8px 0 0">' + fri + '</p>';
-    if (DEFAULT_RESTR[id]) h += '<p class="note">Tu pedido se respetó: ' + esc(K.RESTR_LONG[DEFAULT_RESTR[id]]) + '.</p>';
+      '</p></div><button type="button" class="linkbtn" data-act="logout">Salir</button></div>';
     h += '<h2 class="step">Tu grupo</h2><div class="gboard">' + groupCard(t.cup, t.g, id) + '</div>';
     h += '<h2 class="step">Tus fechas</h2><ol class="tlist">';
     ms.forEach((m, k) => {
@@ -140,9 +136,9 @@ function start(cfg) {
       else if (prevDone) h += '<li class="ti">' + head + '<button type="button" class="btn1 go2" data-act="open" data-k="' + k + '" style="justify-self:start;margin-top:6px">Sacar rival y horario</button></li>';
       else h += '<li class="ti locked">' + head + '<p class="hint" style="margin:0">Se abre cuando saques tu horario de la ' + fl(m.j - 1) + '.</p></li>';
     });
-    h += '</ol><p class="seedbox">Semilla del sorteo: <b>' + esc(cfg.seed) + '</b>. Con la misma semilla sale siempre lo mismo.</p>';
+    h += '</ol>';
     h += '<div class="row"><button type="button" class="btn2" data-act="live">Ver el panel en vivo</button></div>';
-    if (NET.err) h += '<p class="syncnote">No se pudo enviar tu sorteo al panel en vivo. Se reintenta solo; tu resultado ya está fijo por la semilla.</p>';
+    if (NET.err) h += '<p class="syncnote">No se pudo enviar tu sorteo al panel en vivo. Se reintenta solo; tu resultado ya quedó guardado.</p>';
     h += '<details><summary>Todos los grupos</summary>';
     ['Oro', 'Plata'].forEach(cup => {
       h += '<h3 class="bh">Copa ' + cup + '</h3><div class="gboard">';
@@ -342,9 +338,7 @@ function start(cfg) {
     document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-selected', String(x.dataset.mode === mode)));
     $('#dtView').hidden = mode !== 'dt';
     $('#liveView').hidden = mode !== 'live';
-    $('#mapView').hidden = mode !== 'map';
     if (mode === 'live') renderLive();
-    if (mode === 'map') renderMap();
   }
   document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
 
@@ -353,7 +347,7 @@ function start(cfg) {
   const fmtTime = ts => { try { return new Date(ts).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
   function renderMap() {
     const v = $('#mapView');
-    if (v.hidden) return;
+    if (!v || v.hidden) return;
     const hl = state.mapClub, keys = [];
     SLOT_ORDER.forEach(sl => { const k = sl.dayIdx + '-' + sl.hour; if (!keys.includes(k)) keys.push(k); });
     let h = '';
@@ -361,7 +355,7 @@ function start(cfg) {
       const sls = SLOT_ORDER.filter(sl => sl.dayIdx + '-' + sl.hour === k);
       h += '<h3 class="lday">' + DAYS[sls[0].dayIdx] + ' ' + sls[0].time + '</h3>';
       [0, 1, 2].forEach(j => {
-        h += '<div class="mrow"><b>F' + (F0 + j) + '</b><div>';
+        h += '<div class="mrow"><b>F' + (j + 1) + '</b><div>';
         sls.forEach(sl => {
           const mi = res.matches.findIndex(m => m.j === j && m.slot.id === sl.id), m = res.matches[mi];
           const on = mi >= 0 && state.shown.has(mi);
@@ -375,8 +369,8 @@ function start(cfg) {
     $('#mapBody').innerHTML = h;
   }
   const sel = $('#mapClub');
-  sel.innerHTML = '<option value="-1">Resaltar un club (todos)</option>' + TEAMS.slice().sort((a, b) => a.name.localeCompare(b.name, 'es')).map(t => '<option value="' + t.id + '">' + esc(t.name) + '</option>').join('');
-  sel.addEventListener('change', () => { state.mapClub = +sel.value; renderMap(); });
+  if (sel) sel.innerHTML = '<option value="-1">Resaltar un club (todos)</option>' + TEAMS.slice().sort((a, b) => a.name.localeCompare(b.name, 'es')).map(t => '<option value="' + t.id + '">' + esc(t.name) + '</option>').join('');
+  if (sel) sel.addEventListener('change', () => { state.mapClub = +sel.value; renderMap(); });
   function renderLive() {
     renderMap();
     const v = $('#liveView');

@@ -207,7 +207,7 @@
   .liveh .big small { font-size: 1.4rem; color: var(--muted); font-style: normal; font-weight: 600; }
   .pill { display: inline-flex; align-items: center; gap: 8px; font: 600 .85rem var(--body); color: var(--muted); }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
-  .dot.on { background: var(--sa); animation: pulse 1.8s ease-in-out infinite; }
+  .dot.on { background: #E5322D; box-shadow: 0 0 0 3px rgba(229, 50, 45, .25); animation: pulse 1.2s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .35; } }
   .bars { display: grid; gap: 8px; margin: 14px 0 6px; }
   .bar { display: grid; grid-template-columns: 4.6rem 1fr 3rem; gap: 10px; align-items: center; font-size: .9rem; }
@@ -328,7 +328,7 @@
   <header>
     <p class="eyebrow">Keeper Cup 3 · Fase 2</p>
     <h1>Sorteo de horarios</h1>
-    <p class="lede">Copa Oro (puestos 1 a 4) y Copa Plata (puestos 5 a 8) en 4 grupos nuevos cada una. Cada DT entra con el código de su club y saca su rival, día, hora y estadio de las Fechas 8, 9 y 10.</p>
+    <p class="lede">Copa Oro y Copa Plata, Fechas 1, 2 y 3 de la Fase 2. Entra con el código de tu club y saca tu rival, día, hora y estadio de cada fecha.</p>
   </header>
   <p class="banner" id="banner" hidden></p>
   <div id="boot"><p class="hint" style="margin-top:22px">Cargando el sorteo…</p></div>
@@ -336,27 +336,9 @@
     <div class="seg" role="tablist" aria-label="Vista">
       <button type="button" role="tab" data-mode="dt" aria-selected="true">Mi club</button>
       <button type="button" role="tab" data-mode="live" aria-selected="false">En vivo</button>
-      <button type="button" role="tab" data-mode="map" aria-selected="false">Mapa</button>
     </div>
     <div id="dtView"></div>
     <div id="liveView" hidden></div>
-    <div id="mapView" hidden>
-      <h2 class="step">Quién juega en cada horario</h2>
-      <p class="dt-sub" style="margin-top:0">Cada horario con los partidos de las 3 fechas, en los dos estadios. Se llena a medida que los DT sacan su sorteo.</p>
-      <div class="mapctl"><select id="mapClub" aria-label="Resaltar un club"></select></div>
-      <div id="mapBody"></div>
-    </div>
-    <details>
-      <summary>Cómo funciona el sorteo</summary>
-      <ol class="how">
-        <li>Los grupos salen de la tabla final. Grupo 1 = 1º de A, 2º de B, 3º de C y 4º de D; Grupo 2 = 1º de B, 2º de C, 3º de D y 4º de A; y así. Copa Plata usa el mismo reparto con los puestos 5 al 8.</li>
-        <li>Dentro de cada grupo todos juegan contra todos una vez. Se sortea en qué fecha va cada cruce, así cada DT descubre su rival junto con su horario.</li>
-        <li>En Copa Oro cada equipo juega 2 veces en San Miguel y 1 en Los Sauces. En Copa Plata, 12 equipos juegan igual y 4 juegan 2 veces en Los Sauces, nunca en fechas seguidas.</li>
-        <li>Un viernes para cada equipo de Oro y para los 5º y 6º de Plata; los 7º y 8º de Plata no juegan viernes. Nadie juega sus 3 partidos en domingo ni repite día y hora.</li>
-        <li>Los pedidos de los clubes declarados antes del sorteo se respetan.</li>
-        <li>Todo el resultado lo fija la <b>semilla</b> anunciada antes del sorteo: con la misma semilla sale siempre lo mismo, así cualquiera puede comprobar que no se manipuló. La rueda o el bolillero solo te lo muestran.</li>
-      </ol>
-    </details>
   </div>
 </main>
 <script src="sorteo-core.js"></script>

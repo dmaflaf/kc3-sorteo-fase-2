@@ -40,6 +40,23 @@
   .srt-chips button{background:none; border:0; font:inherit; font-weight:800; cursor:pointer; color:inherit;}
   .srt-form{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px;}
   .srt-form .teamsel{flex:1 1 150px; width:auto;}
+  #liveAdm:not(:empty){background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px 14px; margin:14px 0;}
+  .live-h{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+  .live-n{font-size:1.6rem; font-weight:800;} .live-n small{font-size:.9rem; color:var(--sub);}
+  .pill{display:inline-flex; align-items:center; gap:8px; font-size:.82rem; color:var(--sub); font-weight:600;}
+  .dot{width:10px; height:10px; border-radius:50%; background:var(--sub);}
+  .dot.on{background:#E5322D; box-shadow:0 0 0 3px rgba(229,50,45,.25); animation:pulse 1.2s ease-in-out infinite;}
+  @keyframes pulse{50%{opacity:.35;}}
+  .live-bars{display:grid; gap:6px; margin:10px 0;}
+  .bar{display:grid; grid-template-columns:4.6rem 1fr 3rem; gap:10px; align-items:center; font-size:.85rem;}
+  .bar .tr{height:10px; background:var(--border); border-radius:5px; overflow:hidden;} .bar .tr i{display:block; height:100%; background:#E5322D;}
+  .bar b{text-align:right;}
+  .live-day{margin:14px 0 4px; font-weight:800; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; color:var(--sub);}
+  .live-row{display:grid; grid-template-columns:3.2rem auto minmax(0,1fr) auto; gap:8px; align-items:center; padding:6px 0; border-top:1px solid var(--border); font-size:.84rem;}
+  .live-row:not(.done){opacity:.6;} .live-row .vs i{font-style:normal; color:var(--sub);} .live-row .st{font-size:.76rem; white-space:nowrap;}
+  .chip{font-size:.7rem; font-weight:700; padding:2px 7px; border-radius:4px; white-space:nowrap;} .chip.SM{background:var(--blue-bg);} .chip.SA{background:var(--green-bg);}
+  .live-feed{padding:5px 0; border-top:1px solid var(--border); font-size:.84rem;}
+  @media (max-width:560px){ .live-row{grid-template-columns:3rem minmax(0,1fr) auto;} .live-row .chip{display:none;} }
   #toast{position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:#0b1b3f; color:#fff; padding:10px 16px; border-radius:10px; font-weight:600; opacity:0; transition:opacity .2s; pointer-events:none; max-width:92vw; z-index:9;}
   #toast.on{opacity:1;}
 </style>
@@ -49,6 +66,7 @@
   <h1>🎲 Sorteo Fase 2 · Organizador</h1>
   <p class="fecha-sub" style="margin:0">Keeper Cup 3 · Copa Oro (puestos 1–4) y Copa Plata (5–8) · Fechas 8, 9 y 10. Solo para el organizador: los DT entran por el link que se genera abajo.</p>
   <div id="tokenBox"></div>
+  <div id="liveAdm"></div>
   <div class="section-title"><span class="ttl">Estado</span><span class="tag" id="srtTag">sin publicar</span></div>
   <div id="sorteoBox"></div>
 </div>
@@ -124,7 +142,7 @@ function srtRun(d){
   return srt.check;
 }
 const srtLink = ()=>srt.d && srt.d.gist ? (location.protocol === 'file:' ? 'https://dmaflaf.github.io/kc3-sorteo-fase-2/' : new URL('./', location.href).href) + '?g=' + srt.d.owner + '/' + srt.d.gist : '';
-const srtMsg = (K, i)=>`Hola DT de ${K.TEAMS[i].name} 👋 Sorteo de horarios Fase 2 de la Keeper Cup 3 (Fechas 8, 9 y 10). Entra a ${srtLink()} y escribe tu código ${K.CODES[i]}. Ahí sacas tu rival, día, hora y estadio de cada fecha y ves el panel en vivo. Semilla del sorteo: ${srt.d.seed}.`;
+const srtMsg = (K, i)=>`Hola DT de ${K.TEAMS[i].name} 👋 Sorteo de horarios de la Fase 2 de la Keeper Cup 3 (Fechas 1, 2 y 3). Entra a ${srtLink()} y escribe tu código ${K.CODES[i]}. Ahí sacas tu rival, día, hora y estadio de cada fecha y ves el panel en vivo.`;
 async function srtGistFind(){
   for(let page = 1; page <= 3; page++){
     const r = await gh('/gists?per_page=100&page=' + page); if(!r.ok) await ghFail(r);
@@ -193,13 +211,13 @@ function renderSorteo(){
   h += `<h4 class="srt-h">2 · Pedidos de los clubes</h4><div class="srt-chips">${Object.keys(d.pedidos).map(n=>`<span class="qchip on">${esc(n)} · ${esc(RL[d.pedidos[n]] || d.pedidos[n])} <button type="button" data-srt="delped" data-n="${escAttr(n)}" aria-label="Quitar">×</button></span>`).join('') || '<span class="fecha-sub">Sin pedidos</span>'}</div>
     <div class="srt-form"><select id="srtPT" class="teamsel">${groupOrder.flatMap(g=>roster[g]).sort((a,b)=>a.localeCompare(b,'es')).map(t=>`<option>${esc(t)}</option>`).join('')}</select><select id="srtPC" class="teamsel">${Object.keys(RL).map(k=>`<option value="${k}">${esc(RL[k])}</option>`).join('')}</select><button type="button" class="qchip" data-srt="addped">Agregar</button></div>`;
   // 3 semilla
-  h += `<h4 class="srt-h">3 · Semilla</h4><p class="fecha-sub" style="margin:0 0 6px">Anúnciala en el grupo antes del sorteo: con la misma semilla sale siempre el mismo resultado.</p>
+  h += `<h4 class="srt-h">3 · Semilla</h4><p class="fecha-sub" style="margin:0 0 6px">Fija todo el resultado: con la misma semilla sale siempre lo mismo. Los DT no la ven; guárdala por si alguien pide comprobar el sorteo.</p>
     <div class="srt-form"><input id="srtSeed" class="teamsel" value="${escAttr(d.seed)}" maxlength="12" style="text-transform:uppercase;letter-spacing:.12em;font-weight:700"><button type="button" class="qchip" data-srt="seed">Usar</button><button type="button" class="qchip" data-srt="newseed">Nueva al azar</button></div>
     <div class="srt-form"><label class="fecha-sub" style="margin:0">Texto para «se abre…»</label><input id="srtAbre" class="teamsel" value="${escAttr(d.abre)}"><button type="button" class="qchip" data-srt="abre">Guardar</button></div>`;
   // comprobación
   h += `<div class="pend" style="border-color:${okAll?'var(--green)':'var(--red)'};background:${okAll?'var(--green-bg)':'var(--amber-bg)'}">${!ck.res ? '❌ Con estos pedidos no se puede armar el sorteo. Quita alguno.' : okAll ? '✅ Sorteo comprobado: cumple las ' + ck.checks.length + ' reglas.' : '⚠️ ' + ck.checks.filter(x=>!x.ok).map(x=>esc(x.t)).join(' · ')}</div>`;
   if(ck.res){
-    h += `<details><summary class="fecha-sub" style="cursor:pointer">Ver grupos y códigos</summary>${['Oro','Plata'].map(cup=>`<h4 class="srt-h">Copa ${cup}</h4><div class="srt-grid">${[0,1,2,3].map(g=>`<div class="srt-card"><b>Grupo ${g+1}</b>${K.TEAMS.filter(t=>t.cup===cup&&t.g===g).map(t=>`<div class="srt-row"><span class="n">${t.rank}º${t.from}</span><span class="t">${esc(t.name)}</span><code>${K.CODES[t.id]}</code></div>`).join('')}</div>`).join('')}</div>`).join('')}</details>`;
+    h += `<details><summary class="fecha-sub" style="cursor:pointer">Ver grupos y códigos</summary>${['Oro','Plata'].map(cup=>`<h4 class="srt-h">Copa ${cup}</h4><div class="srt-grid">${[0,1,2,3].map(g=>`<div class="srt-card"><b>Grupo ${g+1}</b>${K.TEAMS.filter(t=>t.cup===cup&&t.g===g).map(t=>`<div class="srt-row"><span class="n">${t.rank}º${t.from}</span><span class="t">${esc(t.name)}<br><small class="fecha-sub">${t.cup === 'Plata' && t.p >= 2 ? 'Sin viernes' : 'Juega un viernes'}${K.DEFAULT_RESTR[t.id] ? ' · Pedido: ' + esc(K.RESTR_LONG[K.DEFAULT_RESTR[t.id]]) : ''}</small></span><code>${K.CODES[t.id]}</code></div>`).join('')}</div>`).join('')}</div>`).join('')}</details>`;
   }
   // 4 publicar
   h += `<h4 class="srt-h">4 · Publicar, abrir y cerrar</h4>`;
@@ -216,11 +234,89 @@ function renderSorteo(){
       <details><summary class="fecha-sub" style="cursor:pointer">💬 Mensajes de WhatsApp con el código de cada club</summary><button type="button" class="close-btn" data-srt="copyall">📋 Copiar todos los mensajes</button>${ck.res ? K.TEAMS.map(t=>`<div class="srt-row"><span class="t">${esc(t.name)}</span><code>${K.CODES[t.id]}</code><a class="qchip" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(srtMsg(K, t.id))}">WhatsApp</a></div>`).join('') : ''}</details>`;
   }
   // 5 fixture
-  h += `<h4 class="srt-h">5 · Resultado para el sistema del torneo</h4><p class="fecha-sub" style="margin:0 0 6px">Los 48 partidos de las Fechas 8, 9 y 10 (copa, grupo, rivales, día, fecha, hora y estadio) del sorteo publicado, para cargarlos en la herramienta del torneo y sacar el póster de horarios.</p>
+  h += `<h4 class="srt-h">5 · Resultado para el sistema del torneo</h4><p class="fecha-sub" style="margin:0 0 6px">Los 48 partidos de las Fechas 1, 2 y 3 de la Fase 2 (8, 9 y 10 del torneo: copa, grupo, rivales, día, fecha, hora y estadio) del sorteo publicado, para cargarlos en la herramienta del torneo y sacar el póster de horarios.</p>
     <button type="button" class="close-btn" data-srt="json"${(!c || !ck.res) ? ' disabled' : ''} style="background:var(--gold);color:#3a2400;border-color:transparent">📥 Descargar resultado (JSON)</button>
     <button type="button" class="close-btn" data-srt="csv"${(!c || !ck.res) ? ' disabled' : ''}>📊 Descargar resultado (CSV, para Excel)</button>`;
+  h += `<details style="margin-top:18px"><summary class="srt-h" style="cursor:pointer;margin:0">Cómo funciona el sorteo</summary><ol class="fecha-sub" style="padding-left:1.2em">
+    <li>Los grupos salen de la tabla final. Grupo 1 = 1º de A, 2º de B, 3º de C y 4º de D; Grupo 2 = 1º de B, 2º de C, 3º de D y 4º de A; y así. Copa Plata usa el mismo reparto con los puestos 5 al 8.</li>
+    <li>Dentro de cada grupo todos juegan contra todos una vez. Se sortea en qué fecha va cada cruce, así cada DT descubre su rival junto con su horario.</li>
+    <li>Copa Oro: cada equipo juega 2 veces en San Miguel y 1 en Los Sauces. Copa Plata: 12 equipos igual y 4 juegan 2 veces en Los Sauces, nunca en fechas seguidas.</li>
+    <li>Un viernes para cada equipo de Oro y para los 5º y 6º de Plata; los 7º y 8º de Plata no juegan viernes. Nadie juega sus 3 partidos en domingo ni repite día y hora.</li>
+    <li>Los pedidos de los clubes se respetan. Los DT no ven las reglas de viernes ni los pedidos: todo es sorpresa.</li>
+    <li>La semilla fija todo el resultado; la rueda o el bolillero solo lo muestran.</li></ol></details>`;
+  box.innerHTML = h;
+  liveSync();
+}
+
+/* ---- En vivo para el organizador: lo que van sacando los DT (vía ntfy.sh) y lo que falta ---- */
+const LIVE = {key:'', es:null, poll:0, fails:0, msgs:new Map(), lastId:'', K:null, res:null, cfg:null, f:0, on:false};
+const SHORTD = ['Vie','Sáb','Dom'];
+function liveSync(){
+  const c = srt.cfg, box = document.getElementById('liveAdm');
+  if(!c || !c.topic){ box.innerHTML = ''; return; }
+  const key = c.topic + '|' + c.seed + '|' + JSON.stringify(c.orig) + JSON.stringify(c.pedidos);
+  if(key !== LIVE.key){
+    if(LIVE.es) LIVE.es.close(); clearTimeout(LIVE.poll);
+    LIVE.key = key; LIVE.msgs = new Map(); LIVE.lastId = ''; LIVE.fails = 0; LIVE.cfg = c;
+    LIVE.K = KCDraw.create(c.orig, c.pedidos); LIVE.res = LIVE.K.runDraw(c.seed, LIVE.K.DEFAULT_RESTR, c.variety !== false);
+    liveConnect(c.topic);
+  }
+  LIVE.cfg = c; liveRender();
+}
+function liveMsg(o){
+  if(!o || o.event !== 'message' || !o.id || LIVE.msgs.has(o.id)) return false;
+  let x = null; try{ x = JSON.parse(o.message); }catch(e){ return false; }
+  LIVE.msgs.set(o.id, {t:o.time || 0, x}); LIVE.lastId = o.id; return true;
+}
+function liveConnect(topic){
+  const url = 'https://ntfy.sh/' + encodeURIComponent(topic);
+  const poll = async ()=>{
+    try{ const r = await fetch(url + '/json?poll=1&since=' + (LIVE.lastId || 'all'), {cache:'no-store'}); if(!r.ok) throw 0;
+      let ch = false; (await r.text()).split('\n').forEach(l=>{ if(l.trim()){ try{ if(liveMsg(JSON.parse(l))) ch = true; }catch(e){} } });
+      LIVE.on = true; liveRender();
+    }catch(e){ LIVE.on = false; liveRender(); }
+    LIVE.poll = setTimeout(poll, 6000);
+  };
+  if(typeof EventSource !== 'function'){ poll(); return; }
+  const es = new EventSource(url + '/sse?since=all'); LIVE.es = es;
+  es.onopen = ()=>{ LIVE.on = true; LIVE.fails = 0; liveRender(); };
+  es.onmessage = ev=>{ try{ if(liveMsg(JSON.parse(ev.data))) liveRender(); }catch(e){} };
+  es.onerror = ()=>{ LIVE.on = false; liveRender(); if(++LIVE.fails >= 4){ es.close(); LIVE.es = null; poll(); } };
+}
+function liveDrawn(){
+  const res = LIVE.res, out = new Map(); if(!res) return out;
+  Array.from(LIVE.msgs.values()).sort((a,b)=>a.t-b.t).forEach(({t, x})=>{
+    if(!x || x.k !== 'draw' || x.seed !== LIVE.cfg.seed || !Number.isInteger(x.mi) || !res.matches[x.mi] || out.has(x.mi)) return;
+    const m = res.matches[x.mi]; if(x.by !== m.a && x.by !== m.b) return;
+    out.set(x.mi, {by:x.by, at:(x.at && Math.abs(x.at - t*1000) < 6e5) ? x.at : t*1000});
+  });
+  return out;
+}
+function liveRender(){
+  const box = document.getElementById('liveAdm'), c = LIVE.cfg, K = LIVE.K, res = LIVE.res;
+  if(!c || !res){ box.innerHTML = ''; return; }
+  const D = liveDrawn(), T = K.TEAMS, f = LIVE.f, hh = ts=>new Date(ts).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'});
+  const per = [0,1,2].map(j=>res.matches.filter((m,i)=>m.j===j && D.has(i)).length), tot = per[0]+per[1]+per[2];
+  const est = c.test ? 'Prueba' : c.open ? 'Abierto' : c.closedAt ? 'Cerrado' : 'Sin abrir';
+  let h = `<div class="live-h"><span class="ttl">📡 En vivo</span><span class="live-n">${tot}<small> / 48</small></span><span class="pill"><i class="dot${LIVE.on ? ' on' : ''}"></i>${LIVE.on ? 'Conectado' : 'Conectando…'} · ${est}</span></div>`;
+  h += `<div class="live-bars">${per.map((n,j)=>`<div class="bar"><span>Fecha ${j+1}</span><span class="tr"><i style="width:${Math.round(n/16*100)}%"></i></span><b>${n}/16</b></div>`).join('')}</div>`;
+  h += `<div class="srt-chips">${[0,1,2].map(j=>`<button type="button" class="qchip${j===f?' on':''}" data-lf="${j}">Fecha ${j+1}</button>`).join('')}</div>`;
+  [0,1,2].forEach(d=>{
+    const sls = K.SLOTS.filter(s=>s.dayIdx===d).sort((a,b)=>a.hour-b.hour || (a.st===b.st ? 0 : a.st==='SM' ? -1 : 1));
+    h += `<div class="live-day">${K.DAYS[d]} ${c.dates && c.dates[f] ? c.dates[f][d] + ' nov' : ''}</div>`;
+    sls.forEach(sl=>{
+      const mi = res.matches.findIndex(m=>m.j===f && m.slot.id===sl.id), m = res.matches[mi], x = D.get(mi);
+      h += `<div class="live-row${x ? ' done' : ''}"><span class="t">${sl.time}</span><span class="chip ${sl.st}">${sl.st === 'SM' ? 'San Miguel' : 'Los Sauces'}</span><span class="vs">${esc(T[m.a].name)} <i>vs</i> ${esc(T[m.b].name)} <small class="fecha-sub">${m.cup} G${m.g+1}</small></span><span class="st">${x ? '✅ ' + esc(T[x.by].name) + ' · ' + hh(x.at) : '⏳'}</span></div>`;
+    });
+  });
+  const done = T.map(t=>res.matches.filter((m,i)=>(m.a===t.id||m.b===t.id) && D.has(i)).length);
+  const falta = T.filter(t=>done[t.id] < 3);
+  h += `<div class="live-day">Clubes que aún no terminan (${falta.length})</div><div class="srt-chips">${falta.map(t=>`<span class="qchip">${esc(t.name)} · ${done[t.id]}/3</span>`).join('') || '<span class="fecha-sub">Todos sacaron sus 3 fechas 🎉</span>'}</div>`;
+  const rec = Array.from(D.entries()).sort((a,b)=>b[1].at-a[1].at).slice(0,10);
+  h += `<div class="live-day">Últimos sorteos</div>${rec.length ? rec.map(([mi,x])=>{ const m = res.matches[mi], o = m.a===x.by ? m.b : m.a; return `<div class="live-feed"><b>${hh(x.at)}</b> ${esc(T[x.by].name)} sacó la Fecha ${m.j+1}: vs ${esc(T[o].name)}, ${m.slot.day} ${m.slot.time}, ${m.st === 'SM' ? 'San Miguel' : 'Los Sauces'}</div>`; }).join('') : '<p class="fecha-sub">Todavía nadie ha sorteado.</p>'}`;
   box.innerHTML = h;
 }
+document.getElementById('liveAdm').addEventListener('click', e=>{ const b = e.target.closest('[data-lf]'); if(b){ LIVE.f = +b.dataset.lf; liveRender(); } });
 document.getElementById('sorteoBox').addEventListener('click', async e=>{
   const b = e.target.closest('[data-srt]'); if(!b || b.disabled) return;
   const a = b.dataset.srt, d = srtDraft();
@@ -250,7 +346,7 @@ document.getElementById('sorteoBox').addEventListener('click', async e=>{
   }
   else if(a === 'json' || a === 'csv'){
     const cfg = srt.cfg, K = KCDraw.create(cfg.orig, cfg.pedidos), res = K.runDraw(cfg.seed, K.DEFAULT_RESTR, cfg.variety !== false);
-    const rows = res.matches.slice().sort((x,y)=>x.j-y.j || x.slot.dayIdx-y.slot.dayIdx || x.slot.hour-y.slot.hour).map(m=>({fecha:KCDraw.FECHA0 + m.j, copa:m.cup, grupo:m.g + 1, home:K.TEAMS[m.a].name, away:K.TEAMS[m.b].name, estadio:K.ST_NAME[m.st], dia:m.slot.day, fechaCal:(cfg.dates[m.j][m.slot.dayIdx]) + ' de noviembre', hora:m.slot.time}));
+    const rows = res.matches.slice().sort((x,y)=>x.j-y.j || x.slot.dayIdx-y.slot.dayIdx || x.slot.hour-y.slot.hour).map(m=>({fecha:KCDraw.FECHA0 + m.j, fechaFase2:m.j + 1, copa:m.cup, grupo:m.g + 1, home:K.TEAMS[m.a].name, away:K.TEAMS[m.b].name, estadio:K.ST_NAME[m.st], dia:m.slot.day, fechaCal:(cfg.dates[m.j][m.slot.dayIdx]) + ' de noviembre', hora:m.slot.time}));
     const out = a === 'json'
       ? new Blob([JSON.stringify({torneo:'Keeper Cup 3', fase:2, semilla:cfg.seed, prueba:!!cfg.test, generado:new Date().toISOString(), grupos:['Oro','Plata'].flatMap(cup=>[0,1,2,3].map(g=>({copa:cup, grupo:g+1, equipos:K.TEAMS.filter(t=>t.cup===cup&&t.g===g).map(t=>({nombre:t.name, puesto:t.rank, grupoFase1:t.from, codigo:K.CODES[t.id]}))}))), partidos:rows}, null, 1)], {type:'application/json'})
       : new Blob(['\ufeffFecha;Copa;Grupo;Local;Visitante;Estadio;Dia;Fecha calendario;Hora\n' + rows.map(r=>[r.fecha,r.copa,r.grupo,r.home,r.away,r.estadio,r.dia,r.fechaCal,r.hora].join(';')).join('\n')], {type:'text/csv'});
