@@ -465,7 +465,7 @@ function start(cfg) {
     if (!o || o.event !== 'message' || !o.id || NET.msgs.has(o.id)) return false;
     let x = null; try { x = JSON.parse(o.message); } catch (e) { return false; }
     NET.msgs.set(o.id, { t: o.time || 0, x }); NET.lastId = o.id;
-    if (x && x.k === 'close') setTimeout(() => window.KCSorteo.reload(), 500);
+    if (x && (x.k === 'close' || x.k === 'reset')) setTimeout(() => window.KCSorteo.reload(), 500);
     return true;
   }
   function applyNet(render) {
@@ -528,11 +528,11 @@ function start(cfg) {
 
   /* La configuración se revisa cada minuto (por si el organizador cierra el sorteo). */
   setInterval(async () => {
-    try { const c = await fetchCfg(); if (c.seed === cfg.seed && c.open !== cfg.open) { cfg.open = c.open; CFG.open = c.open; banner(); if (!state.busy) renderDT(); } }
+    try { const c = await fetchCfg(); if (c.seed !== cfg.seed || c.topic !== cfg.topic) { location.reload(); return; } if (c.open !== cfg.open) { cfg.open = c.open; CFG.open = c.open; banner(); if (!state.busy) renderDT(); } }
     catch (e) { /* se vuelve a intentar */ }
   }, 60000);
   window.KCSorteo.reload = async () => {
-    try { const c = await fetchCfg(); if (c.seed === cfg.seed) { cfg.open = c.open; CFG.open = c.open; banner(); if (!state.busy) renderDT(); } else location.reload(); }
+    try { const c = await fetchCfg(); if (c.seed === cfg.seed && c.topic === cfg.topic) { cfg.open = c.open; CFG.open = c.open; banner(); if (!state.busy) renderDT(); } else location.reload(); }
     catch (e) { /* sin cambios */ }
   };
 

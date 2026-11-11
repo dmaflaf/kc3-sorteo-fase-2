@@ -237,6 +237,9 @@ function renderSorteo(){
   h += `<h4 class="srt-h">5 · Resultado para el sistema del torneo</h4><p class="fecha-sub" style="margin:0 0 6px">Los 48 partidos de las Fechas 1, 2 y 3 de la Fase 2 (8, 9 y 10 del torneo: copa, grupo, rivales, día, fecha, hora y estadio) del sorteo publicado, para cargarlos en la herramienta del torneo y sacar el póster de horarios.</p>
     <button type="button" class="close-btn" data-srt="json"${(!c || !ck.res) ? ' disabled' : ''} style="background:var(--gold);color:#3a2400;border-color:transparent">📥 Descargar resultado (JSON)</button>
     <button type="button" class="close-btn" data-srt="csv"${(!c || !ck.res) ? ' disabled' : ''}>📊 Descargar resultado (CSV, para Excel)</button>`;
+  h += `<h4 class="srt-h">6 · Reiniciar</h4><p class="fecha-sub" style="margin:0 0 6px">Borra todo lo que sacaron los DT, cierra el sorteo y recarga los teléfonos que estén abiertos. Después lo vuelves a abrir con 🟢.</p>
+    <button type="button" class="close-btn" data-srt="reset"${(!cloud.c || srt.busy || !c) ? ' disabled' : ''}>🔄 Reiniciar el sorteo con los mismos horarios</button>
+    <button type="button" class="close-btn" data-srt="reseed"${(!cloud.c || srt.busy || !c) ? ' disabled' : ''} style="border-color:var(--red);color:var(--red)">🎲 Reiniciar con semilla nueva (cambian todos los horarios)</button>`;
   h += `<details style="margin-top:18px"><summary class="srt-h" style="cursor:pointer;margin:0">Cómo funciona el sorteo</summary><ol class="fecha-sub" style="padding-left:1.2em">
     <li>Los grupos salen de la tabla final. Grupo 1 = 1º de A, 2º de B, 3º de C y 4º de D; Grupo 2 = 1º de B, 2º de C, 3º de D y 4º de A; y así. Copa Plata usa el mismo reparto con los puestos 5 al 8.</li>
     <li>Dentro de cada grupo todos juegan contra todos una vez. Se sortea en qué fecha va cada cruce, así cada DT descubre su rival junto con su horario.</li>
@@ -253,7 +256,7 @@ const LIVE = {key:'', es:null, poll:0, fails:0, msgs:new Map(), lastId:'', K:nul
 const SHORTD = ['Vie','Sáb','Dom'];
 function liveSync(){
   const c = srt.cfg, box = document.getElementById('liveAdm');
-  if(!c || !c.topic){ box.innerHTML = ''; return; }
+  if(!c || !c.topic){ box.innerHTML = ''; box.dataset.h = ''; return; }
   const key = c.topic + '|' + c.seed + '|' + JSON.stringify(c.orig) + JSON.stringify(c.pedidos);
   if(key !== LIVE.key){
     if(LIVE.es) LIVE.es.close(); clearTimeout(LIVE.poll);
@@ -295,7 +298,7 @@ function liveDrawn(){
 }
 function liveRender(){
   const box = document.getElementById('liveAdm'), c = LIVE.cfg, K = LIVE.K, res = LIVE.res;
-  if(!c || !res){ box.innerHTML = ''; return; }
+  if(!c || !res){ box.innerHTML = ''; box.dataset.h = ''; return; }
   const D = liveDrawn(), T = K.TEAMS, f = LIVE.f, hh = ts=>new Date(ts).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'});
   const per = [0,1,2].map(j=>res.matches.filter((m,i)=>m.j===j && D.has(i)).length), tot = per[0]+per[1]+per[2];
   const est = c.test ? 'Prueba' : c.open ? 'Abierto' : c.closedAt ? 'Cerrado' : 'Sin abrir';
@@ -317,7 +320,7 @@ function liveRender(){
   h += `<div class="live-day">Clubes que aún no terminan (${falta.length})</div><div class="srt-chips">${falta.map(t=>`<span class="qchip">${esc(t.name)} · ${done[t.id]}/3</span>`).join('') || '<span class="fecha-sub">Todos sacaron sus 3 fechas 🎉</span>'}</div>`;
   const rec = Array.from(D.entries()).sort((a,b)=>b[1].at-a[1].at).slice(0,10);
   h += `<div class="live-day">Últimos sorteos</div>${rec.length ? rec.map(([mi,x])=>{ const m = res.matches[mi], o = m.a===x.by ? m.b : m.a; if(x.by === -1) return `<div class="live-feed"><b>${hh(x.at)}</b> ⚡ Organizador completó la Fecha ${m.j+1}: ${esc(T[m.a].name)} vs ${esc(T[m.b].name)}, ${m.slot.day} ${m.slot.time}</div>`; return `<div class="live-feed"><b>${hh(x.at)}</b> ${esc(T[x.by].name)} sacó la Fecha ${m.j+1}: vs ${esc(T[o].name)}, ${m.slot.day} ${m.slot.time}, ${m.st === 'SM' ? 'San Miguel' : 'Los Sauces'}</div>`; }).join('') : '<p class="fecha-sub">Todavía nadie ha sorteado.</p>'}`;
-  box.innerHTML = h;
+  if(box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }   /* sin cambios no se redibuja (los botones no se mueven bajo el dedo) */
 }
 document.getElementById('liveAdm').addEventListener('click', async e=>{
   const b = e.target.closest('[data-lf]'); if(b){ LIVE.f = +b.dataset.lf; liveRender(); return; }
@@ -354,6 +357,18 @@ document.getElementById('sorteoBox').addEventListener('click', async e=>{
     if(!confirm(`¿Abrir el sorteo real con la semilla ${d.seed}? Los DT podrán sacar sus horarios desde ya.`)) return;
     if(srt.cfg && srt.cfg.test) d.topic = srtTopic();
     await srtPublish({test:false, open:true, closedAt:0, topic:d.topic || srtTopic(), openedAt:Date.now()}, '🟢 Sorteo abierto');
+  }
+  else if(a === 'reset' || a === 'reseed'){
+    const c = srt.cfg, real = c && !c.test && (c.open || c.closedAt);
+    const what = a === 'reset' ? 'Se borran los sorteos de los DT y el sorteo queda cerrado. Los horarios no cambian (misma semilla).' : 'Se borran los sorteos de los DT, el sorteo queda cerrado y se usa una SEMILLA NUEVA: cambian todos los rivales, días, horas y estadios.';
+    if(!confirm('¿Reiniciar el sorteo?\n\n' + what)) return;
+    if(real && (prompt('Es el sorteo REAL. Escribe REINICIAR para confirmar.') || '').trim().toUpperCase() !== 'REINICIAR'){ toast('No se reinició'); return; }
+    const oldTopic = c && c.topic, oldSeed = d.seed;
+    if(a === 'reseed') d.seed = srtSeed();
+    d.topic = srtTopic();
+    const ok = await srtPublish({open:false, closedAt:0, openedAt:0, topic:d.topic, test:a === 'reset' ? !!(c && c.test) : false}, a === 'reset' ? '🔄 Sorteo reiniciado (mismos horarios). Ábrelo de nuevo con 🟢' : '🎲 Sorteo reiniciado con semilla nueva ' + d.seed + '. Ábrelo de nuevo con 🟢');
+    if(!ok){ d.seed = oldSeed; srtSave(); renderSorteo(); return; }
+    if(oldTopic) fetch('https://ntfy.sh/' + encodeURIComponent(oldTopic), {method:'POST', body:JSON.stringify({k:'reset'})}).catch(()=>{});
   }
   else if(a === 'close'){
     if(!confirm('¿Cerrar el sorteo? Los DT ya no podrán sacar horarios (sí ver sus resultados).')) return;
