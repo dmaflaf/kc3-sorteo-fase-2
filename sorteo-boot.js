@@ -137,6 +137,10 @@ function start(cfg) {
       else h += '<li class="ti locked">' + head + '<p class="hint" style="margin:0">Se abre cuando saques tu horario de la ' + fl(m.j - 1) + '.</p></li>';
     });
     h += '</ol>';
+    const allDone = ms.every(m => state.shown.has(res.matches.indexOf(m)));
+    if (allDone) h += '<div class="row"><button type="button" class="btn1 go2" data-act="img">📸 Descargar mi fixture (imagen)</button>' +
+      (canShareFiles() ? '<button type="button" class="btn2" data-act="share">Compartir</button>' : '') + '</div>';
+    else h += '<p class="hint" style="margin-top:12px">Cuando saques tus 3 fechas podrás descargar tu fixture como imagen.</p>';
     h += '<div class="row"><button type="button" class="btn2" data-act="live">Ver el panel en vivo</button></div>';
     if (NET.err) h += '<p class="syncnote">No se pudo enviar tu sorteo al panel en vivo. Se reintenta solo; tu resultado ya quedó guardado.</p>';
     h += '<details><summary>Todos los grupos</summary>';
@@ -326,6 +330,7 @@ function start(cfg) {
     }
     else if (act === 'mode') { state.dtMode = a.dataset.v; renderDT(); }
     else if (act === 'close') { state.open = -1; renderDT(); }
+    else if (act === 'img' || act === 'share') fixtureImage(act === 'share');
   });
   $('#dtView').addEventListener('submit', e => {
     if (e.target.id !== 'gateForm') return;
@@ -341,6 +346,55 @@ function start(cfg) {
     if (mode === 'live') renderLive();
   }
   document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+  /* ---------- Imagen del fixture del club (PNG) ---------- */
+  function canShareFiles() {
+    try { return !!(navigator.canShare && navigator.canShare({ files: [new File([''], 'x.png', { type: 'image/png' })] })); } catch (e) { return false; }
+  }
+  function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+  function fitFont(c, txt, maxW, size, style) { let s = size; c.font = style.replace('{s}', s); while (c.measureText(txt).width > maxW && s > 14) { s -= 2; c.font = style.replace('{s}', s); } }
+  async function fixtureImage(share) {
+    try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) { /* sin fuentes */ }
+    const id = state.me, t = TEAMS[id], ms = teamMatches(id);
+    const W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    const DISP = '"Barlow Condensed", "Arial Narrow", Impact, sans-serif', BODY = 'Barlow, system-ui, sans-serif';
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0B1B4A'); g.addColorStop(1, '#050B24');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.strokeStyle = 'rgba(77,184,255,.07)'; c.lineWidth = 1;
+    for (let x = 0; x < W; x += 54) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, H); c.stroke(); }
+    for (let y = 0; y < H; y += 54) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+    const gold = t.cup === 'Oro' ? '#F2C14E' : '#C9D3E8';
+    c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+    c.fillStyle = '#4DB8FF'; c.font = 'italic 700 34px ' + DISP; c.fillText('KEEPER CUP 3 · FASE 2', 72, 110);
+    c.fillStyle = '#FFFFFF'; fitFont(c, t.name.toUpperCase(), W - 144, 112, 'italic 800 {s}px ' + DISP); c.fillText(t.name.toUpperCase(), 72, 228);
+    c.fillStyle = gold; c.font = 'italic 800 46px ' + DISP; c.fillText('COPA ' + t.cup.toUpperCase() + ' · GRUPO ' + (t.g + 1), 72, 292);
+    c.fillStyle = '#9DB0DD'; c.font = '600 28px ' + BODY; c.fillText('Mi fixture · Fechas 1, 2 y 3', 72, 340);
+    const top = 390, cardH = 270, gap = 26;
+    ms.forEach((m, k) => {
+      const y = top + k * (cardH + gap), rival = m.a === id ? m.b : m.a;
+      roundRect(c, 60, y, W - 120, cardH, 26); c.fillStyle = 'rgba(17,28,68,.92)'; c.fill();
+      c.strokeStyle = m.st === 'SA' ? 'rgba(63,217,160,.55)' : 'rgba(143,176,255,.55)'; c.lineWidth = 3; c.stroke();
+      c.fillStyle = '#FFA24A'; c.font = 'italic 800 40px ' + DISP; c.fillText('FECHA ' + (m.j + 1), 100, y + 64);
+      const stName = ST_NAME[m.st].toUpperCase();
+      c.font = '700 24px ' + BODY; const sw = c.measureText(stName).width + 36;
+      roundRect(c, W - 100 - sw, y + 30, sw, 46, 23); c.fillStyle = m.st === 'SA' ? '#0F3B33' : '#1C2E6B'; c.fill();
+      c.fillStyle = m.st === 'SA' ? '#3FD9A0' : '#8FB0FF'; c.fillText(stName, W - 100 - sw + 18, y + 62);
+      c.fillStyle = '#9DB0DD'; c.font = '600 28px ' + BODY; c.fillText('vs', 100, y + 132);
+      c.fillStyle = '#FFFFFF'; fitFont(c, TEAMS[rival].name.toUpperCase(), W - 260, 66, 'italic 800 {s}px ' + DISP); c.fillText(TEAMS[rival].name.toUpperCase(), 150, y + 134);
+      const dia = m.slot.day + (dateOf(m.j, m.slot.dayIdx) ? ' ' + dateOf(m.j, m.slot.dayIdx) : '');
+      c.fillStyle = '#FFA24A'; c.font = 'italic 800 54px ' + DISP; c.fillText(dia.toUpperCase(), 100, y + 222);
+      c.fillStyle = '#FFFFFF'; c.textAlign = 'right'; c.font = 'italic 800 76px ' + DISP; c.fillText(m.slot.time, W - 100, y + 226); c.textAlign = 'left';
+    });
+    c.fillStyle = '#51618A'; c.font = '600 24px ' + BODY; c.textAlign = 'center'; c.fillText('Sorteo oficial de horarios · Keeper Cup 3', W / 2, H - 50); c.textAlign = 'left';
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    const name = 'fixture-' + t.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').toLowerCase() + '-fase2.png';
+    if (share && canShareFiles()) {
+      try { await navigator.share({ files: [new File([blob], name, { type: 'image/png' })], title: 'Mi fixture · Keeper Cup 3' }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 5000);
+  }
 
   /* ---------- Panel en vivo y mapa ---------- */
   let lastShown = new Set();
