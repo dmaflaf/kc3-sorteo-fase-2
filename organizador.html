@@ -115,7 +115,7 @@ const SRT_OFICIAL = {
   B:['Leones','Sub 21','Mandela','Templo Fit','Libert','Real Sevilla','Jolines','Pecezuelos'],
   C:['Vaster','Somec','Barcelona','La Banda','Real Potosí','Cormoran','San Francisco','San Andres'],
   D:['Leipzig','Legacy','Clowiss','Randagi','America','Universitarios','San José','Juventus']};
-const SRT_PEDIDOS0 = {Legacy:'noSab', Clowiss:'sab19', Barcelona:'sab17', Leones:'fixDVS'};
+const SRT_PEDIDOS0 = {Legacy:'noSab', Clowiss:'sab19', Barcelona:'sab17', Leones:'fDVS'};
 const srt = {d:null, cfg:null, busy:false, msg:'', check:null, checkKey:''};
 try{ const raw = localStorage.getItem(SRT_KEY); if(raw) srt.d = JSON.parse(raw); }catch(e){}
 function srtSave(){ try{ localStorage.setItem(SRT_KEY, JSON.stringify(srt.d)); }catch(e){} }
@@ -194,7 +194,7 @@ function renderSorteo(){
   const st = !c ? 'sin publicar' : c.test ? '🧪 prueba ' + (c.open ? 'abierta' : 'cerrada') : c.open ? '🟢 abierto' : c.closedAt ? '⛔ cerrado' : '🔒 publicado, sin abrir';
   document.getElementById('srtTag').textContent = st;
   const differs = c && srtKeyOf(d) !== srtKeyOf(c);
-  const RL = KCDraw.create(d.orig, {}).RESTR;
+  const K0 = KCDraw.create(d.orig, {}), RL = K0.RESTR;
   let h = '';
   if(!cloud.c) h += `<div class="pend" style="border-color:var(--red)">⚠️ Conecta la nube en este dispositivo para poder publicar el sorteo.</div>`;
   // 1 tabla
@@ -208,8 +208,10 @@ function renderSorteo(){
   });
   h += `</div><button type="button" class="close-btn" data-srt="retable" style="margin:6px 0 4px">↻ Volver a la tabla oficial</button>`;
   // 2 pedidos
-  h += `<h4 class="srt-h">2 · Pedidos de los clubes</h4><div class="srt-chips">${Object.keys(d.pedidos).map(n=>`<span class="qchip on">${esc(n)} · ${esc(RL[d.pedidos[n]] || d.pedidos[n])} <button type="button" data-srt="delped" data-n="${escAttr(n)}" aria-label="Quitar">×</button></span>`).join('') || '<span class="fecha-sub">Sin pedidos</span>'}</div>
-    <div class="srt-form"><select id="srtPT" class="teamsel">${groupOrder.flatMap(g=>roster[g]).sort((a,b)=>a.localeCompare(b,'es')).map(t=>`<option>${esc(t)}</option>`).join('')}</select><select id="srtPC" class="teamsel">${Object.keys(RL).map(k=>`<option value="${k}">${esc(RL[k])}</option>`).join('')}</select><button type="button" class="qchip" data-srt="addped">Agregar</button></div>`;
+  h += `<h4 class="srt-h">2 · Pedidos de los clubes</h4><div class="srt-chips">${Object.keys(d.pedidos).map(n=>`<span class="qchip on">${esc(n)} · ${esc(K0.restrLabel(d.pedidos[n]))} <button type="button" data-srt="delped" data-n="${escAttr(n)}" aria-label="Quitar">×</button></span>`).join('') || '<span class="fecha-sub">Sin pedidos</span>'}</div>
+    <div class="srt-form"><select id="srtPT" class="teamsel">${groupOrder.flatMap(g=>roster[g]).sort((a,b)=>a.localeCompare(b,'es')).map(t=>`<option>${esc(t)}</option>`).join('')}</select><select id="srtPC" class="teamsel" onchange="document.getElementById('srtCus').hidden = this.value !== 'custom'"><option value="custom">📅 Días por fecha (a elección)…</option>${Object.keys(RL).filter(k=>k !== 'fixDVS').map(k=>`<option value="${k}">${esc(RL[k])}</option>`).join('')}</select><button type="button" class="qchip" data-srt="addped">Agregar</button></div>
+    <div class="srt-form" id="srtCus">${[1,2,3].map(j=>`<label class="fecha-sub" style="display:flex;align-items:center;gap:6px;flex:1 1 150px">Fecha ${j}<select id="srtF${j}" class="teamsel"><option value="-">Cualquier día</option><option value="V">Viernes</option><option value="S">Sábado</option><option value="D">Domingo</option></select></label>`).join('')}</div>
+    <p class="fecha-sub" style="margin:0 0 8px">Un pedido por club (si agregas otro al mismo club, reemplaza el anterior). Si un pedido no se puede cumplir con las reglas, la comprobación de abajo lo avisa.</p>`;
   // 3 semilla
   h += `<h4 class="srt-h">3 · Semilla</h4><p class="fecha-sub" style="margin:0 0 6px">Fija todo el resultado: con la misma semilla sale siempre lo mismo. Los DT no la ven; guárdala por si alguien pide comprobar el sorteo.</p>
     <div class="srt-form"><input id="srtSeed" class="teamsel" value="${escAttr(d.seed)}" maxlength="12" style="text-transform:uppercase;letter-spacing:.12em;font-weight:700"><button type="button" class="qchip" data-srt="seed">Usar</button><button type="button" class="qchip" data-srt="newseed">Nueva al azar</button></div>
@@ -217,7 +219,7 @@ function renderSorteo(){
   // comprobación
   h += `<div class="pend" style="border-color:${okAll?'var(--green)':'var(--red)'};background:${okAll?'var(--green-bg)':'var(--amber-bg)'}">${!ck.res ? '❌ Con estos pedidos no se puede armar el sorteo. Quita alguno.' : okAll ? '✅ Sorteo comprobado: cumple las ' + ck.checks.length + ' reglas.' : '⚠️ ' + ck.checks.filter(x=>!x.ok).map(x=>esc(x.t)).join(' · ')}</div>`;
   if(ck.res){
-    h += `<details><summary class="fecha-sub" style="cursor:pointer">Ver grupos y códigos</summary>${['Oro','Plata'].map(cup=>`<h4 class="srt-h">Copa ${cup}</h4><div class="srt-grid">${[0,1,2,3].map(g=>`<div class="srt-card"><b>Grupo ${g+1}</b>${K.TEAMS.filter(t=>t.cup===cup&&t.g===g).map(t=>`<div class="srt-row"><span class="n">${t.rank}º${t.from}</span><span class="t">${esc(t.name)}<br><small class="fecha-sub">${t.cup === 'Plata' && t.p >= 2 ? 'Sin viernes' : 'Juega un viernes'}${K.DEFAULT_RESTR[t.id] ? ' · Pedido: ' + esc(K.RESTR_LONG[K.DEFAULT_RESTR[t.id]]) : ''}</small></span><code>${K.CODES[t.id]}</code></div>`).join('')}</div>`).join('')}</div>`).join('')}</details>`;
+    h += `<details><summary class="fecha-sub" style="cursor:pointer">Ver grupos y códigos</summary>${['Oro','Plata'].map(cup=>`<h4 class="srt-h">Copa ${cup}</h4><div class="srt-grid">${[0,1,2,3].map(g=>`<div class="srt-card"><b>Grupo ${g+1}</b>${K.TEAMS.filter(t=>t.cup===cup&&t.g===g).map(t=>`<div class="srt-row"><span class="n">${t.rank}º${t.from}</span><span class="t">${esc(t.name)}<br><small class="fecha-sub">${t.cup === 'Plata' && t.p >= 2 ? 'Sin viernes' : 'Juega un viernes'}${K.DEFAULT_RESTR[t.id] ? ' · Pedido: ' + esc(K.restrLabel(K.DEFAULT_RESTR[t.id], true)) : ''}</small></span><code>${K.CODES[t.id]}</code></div>`).join('')}</div>`).join('')}</div>`).join('')}</details>`;
   }
   // 4 publicar
   h += `<h4 class="srt-h">4 · Publicar, abrir y cerrar</h4>`;
@@ -342,7 +344,13 @@ document.getElementById('sorteoBox').addEventListener('click', async e=>{
   if(a === 'up' || a === 'down') srtEdit(d=>{ const L = d.orig[b.dataset.g], i = +b.dataset.i, j = a === 'up' ? i-1 : i+1; [L[i], L[j]] = [L[j], L[i]]; });
   else if(a === 'retable') srtEdit(d=>{ d.orig = JSON.parse(JSON.stringify(SRT_OFICIAL)); });
   else if(a === 'delped') srtEdit(d=>{ delete d.pedidos[b.dataset.n]; });
-  else if(a === 'addped') srtEdit(d=>{ d.pedidos[document.getElementById('srtPT').value] = document.getElementById('srtPC').value; });
+  else if(a === 'addped'){
+    let code = document.getElementById('srtPC').value;
+    if(code === 'custom'){ code = 'f' + [1,2,3].map(j=>document.getElementById('srtF' + j).value).join(''); if(code === 'f---'){ toast('Elige el día de al menos una fecha'); return; } }
+    const team = document.getElementById('srtPT').value;
+    srtEdit(d=>{ d.pedidos[team] = code; });
+    const ck = srtRun(srt.d); if(!ck.res || !ck.checks.every(x=>x.ok)) toast('⚠️ Con ese pedido el sorteo no cumple las reglas: revisa el aviso');
+  }
   else if(a === 'seed'){ const v = document.getElementById('srtSeed').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,''); if(v) srtEdit(d=>{ d.seed = v; }); }
   else if(a === 'newseed') srtEdit(d=>{ d.seed = srtSeed(); });
   else if(a === 'abre'){ d.abre = document.getElementById('srtAbre').value.trim(); srtSave(); renderSorteo(); toast('Guardado'); }

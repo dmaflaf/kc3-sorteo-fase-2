@@ -76,8 +76,29 @@ function allowed(code, slot, j) {
     case 'noSab': return slot.dayIdx !== 1;
     case 'noDom': return slot.dayIdx !== 2;
     case 'noMan': return !(slot.dayIdx === 2 && slot.hour < 13);
-    default: return true;
+    default: {
+      const p = pinOf(code, j);                       /* días a elección por fecha: 'f' + V/S/D/- para las fechas 1, 2 y 3 */
+      return p === undefined || slot.dayIdx === p;
+    }
   }
+}
+/* Día obligatorio de una fecha según el pedido (undefined = cualquiera). 'fixDVS' es el pedido de Leones (= 'fDVS'). */
+function pinOf(code, j) {
+  if (j === undefined || !code) return undefined;
+  if (code === 'fixDVS') code = 'fDVS';
+  if (!/^f[VSD-]{3}$/.test(code)) return undefined;
+  const i = 'VSD'.indexOf(code[1 + j]);
+  return i < 0 ? undefined : i;
+}
+const DLONG = ['viernes', 'sábado', 'domingo'];
+/* Texto de un pedido (corto para chips, largo para detalles). */
+function restrLabel(code, long) {
+  if (code === 'fixDVS') code = 'fDVS';
+  if (/^f[VSD-]{3}$/.test(code)) {
+    const parts = [0, 1, 2].map(j => { const i = 'VSD'.indexOf(code[1 + j]); return i < 0 ? null : (long ? 'Fecha ' + (j + 1) + ' ' + DLONG[i] : 'F' + (j + 1) + ' ' + ['Vie', 'Sáb', 'Dom'][i]); }).filter(Boolean);
+    return parts.length ? parts.join(long ? ', ' : ' · ') : (long ? 'Sin pedido' : 'Cualquiera');
+  }
+  return (long ? RESTR_LONG : RESTR)[code] || code;
 }
 const okMatch = (m, slot, restr) => allowed(restr[m.a], slot, m.j) && allowed(restr[m.b], slot, m.j);
 
@@ -209,7 +230,7 @@ function assignDays(matches, restr, rnd) {
   };
   matches.forEach(m => {
     m.pin = undefined;
-    [m.a, m.b].forEach(id => { if (restr[id] === 'fixDVS') m.pin = [2, 0, 1][m.j]; });
+    [m.a, m.b].forEach(id => { const p = pinOf(restr[id], m.j); if (p !== undefined) { if (m.pin !== undefined && m.pin !== p) m.pinClash = true; m.pin = p; } });
   });
   let bestDays = null, bestScore = Infinity, pinFail = false;
   for (let rs = 0; rs < 12 && bestScore > 4; rs++) {
@@ -248,7 +269,7 @@ function assignDays(matches, restr, rnd) {
       } else swap();
     }
   }
-  if (pinFail || bestScore >= 100) return false;
+  if (pinFail || matches.some(m => m.pinClash) || bestScore >= 100) return false;
   matches.forEach((m, i) => { m.day = bestDays[i]; });
   return true;
 }
@@ -364,7 +385,7 @@ const CODES = (() => {
   const alt = TEAMS.map((t, i) => (dup(base, i) && ini(t).length > 1 ? ini(t) + t.rank : base[i]));
   return TEAMS.map((t, i) => (dup(alt, i) ? L(t).slice(0, 4) + t.rank : alt[i]));
 })();
-return { DAYS, ST_NAME, SLOTS, RESTR, RESTR_LONG, ORIG, TEAMS, DEFAULT_RESTR, CODES, tid, MATCHINGS, makeRng, shuffle, allowed, okMatch, runDraw, dayStats, verify, teamMatches, hkey, satRepeats };
+return { DAYS, ST_NAME, SLOTS, RESTR, RESTR_LONG, restrLabel, pinOf, ORIG, TEAMS, DEFAULT_RESTR, CODES, tid, MATCHINGS, makeRng, shuffle, allowed, okMatch, runDraw, dayStats, verify, teamMatches, hkey, satRepeats };
 }
 const FECHA0 = 8;   /* la Fase 2 son las Fechas 8, 9 y 10 del torneo */
 window.KCDraw = { create, FECHA0 };
