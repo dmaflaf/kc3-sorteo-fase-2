@@ -57,6 +57,16 @@
   .chip{font-size:.7rem; font-weight:700; padding:2px 7px; border-radius:4px; white-space:nowrap;} .chip.SM{background:var(--blue-bg);} .chip.SA{background:var(--green-bg);}
   .live-feed{padding:5px 0; border-top:1px solid var(--border); font-size:.84rem;}
   @media (max-width:560px){ .live-row{grid-template-columns:3rem minmax(0,1fr) auto;} .live-row .chip{display:none;} }
+  .srt-sec{background:var(--card); border:1px solid var(--border); border-radius:14px; margin:12px 0; padding:0 14px;}
+  .srt-sec > summary{list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 0; font-size:.82rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--sub);}
+  .srt-sec > summary::-webkit-details-marker{display:none;}
+  .srt-sec > summary::after{content:'▾'; font-size:1rem; transition:transform .2s; flex:none;}
+  .srt-sec:not([open]) > summary::after{transform:rotate(-90deg);}
+  .srt-sec > summary small{margin-left:auto; text-transform:none; letter-spacing:0; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:55%;}
+  .srt-sec .srt-body{padding:0 0 12px;}
+  #liveAdm:not(:empty){padding:0; border:0; background:none; margin:14px 0 0;}
+  .srt-sec.live > summary{text-transform:none; letter-spacing:0; color:var(--ink); flex-wrap:wrap;}
+  .srt-sec.live > summary .pill{margin-left:auto;}
   #toast{position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:#0b1b3f; color:#fff; padding:10px 16px; border-radius:10px; font-weight:600; opacity:0; transition:opacity .2s; pointer-events:none; max-width:92vw; z-index:9;}
   #toast.on{opacity:1;}
 </style>
@@ -64,7 +74,7 @@
 <body>
 <div class="wrap">
   <h1>🎲 Sorteo Fase 2 · Organizador</h1>
-  <p class="fecha-sub" style="margin:0">Keeper Cup 3 · Copa Oro (puestos 1–4) y Copa Plata (5–8) · Fechas 8, 9 y 10. Solo para el organizador: los DT entran por el link que se genera abajo.</p>
+  <p class="fecha-sub" style="margin:0">Keeper Cup 3 · Copa Oro (puestos 1–4) y Copa Plata (5–8) · Fechas 1, 2 y 3 de la Fase 2 (8, 9 y 10 del torneo). Solo para el organizador: los DT entran por el link que se genera abajo.</p>
   <div id="tokenBox"></div>
   <div id="liveAdm"></div>
   <div class="section-title"><span class="ttl">Estado</span><span class="tag" id="srtTag">sin publicar</span></div>
@@ -188,6 +198,14 @@ function srtEdit(fn){
   if(srtLocked() && !confirm('El sorteo real ya se abrió. Cambiar la tabla, los pedidos o la semilla cambia TODOS los resultados. ¿Seguro?')) return;
   fn(srtDraft()); srtSave(); renderSorteo();
 }
+const SECS_KEY = 'kc3s_secs';
+let srtSecs = {}; try{ srtSecs = JSON.parse(localStorage.getItem(SECS_KEY) || '{}') || {}; }catch(e){}
+const srtSecOpen = k=>srtSecs[k] !== false;
+function srtSecToggle(e){
+  const el = e.target; if(!el.classList || !el.classList.contains('srt-sec')) return;
+  srtSecs[el.dataset.sec] = el.open; try{ localStorage.setItem(SECS_KEY, JSON.stringify(srtSecs)); }catch(x){}
+  if(el.dataset.sec === 'live'){ const b = document.getElementById('liveAdm'); b.dataset.h = ''; }
+}
 function renderSorteo(){
   const box = document.getElementById('sorteoBox'); if(!box) return;
   const d = srtDraft(), c = srt.cfg, ck = srtRun(d), K = ck.K, okAll = ck.res && ck.checks.every(x=>x.ok);
@@ -242,6 +260,10 @@ function renderSorteo(){
   h += `<h4 class="srt-h">6 · Reiniciar</h4><p class="fecha-sub" style="margin:0 0 6px">Borra todo lo que sacaron los DT, cierra el sorteo y recarga los teléfonos que estén abiertos. Después lo vuelves a abrir con 🟢.</p>
     <button type="button" class="close-btn" data-srt="reset"${(!cloud.c || srt.busy || !c) ? ' disabled' : ''}>🔄 Reiniciar el sorteo con los mismos horarios</button>
     <button type="button" class="close-btn" data-srt="reseed"${(!cloud.c || srt.busy || !c) ? ' disabled' : ''} style="border-color:var(--red);color:var(--red)">🎲 Reiniciar con semilla nueva (cambian todos los horarios)</button>`;
+  /* cada sección numerada se puede plegar (se recuerda en este navegador) */
+  const info = {1:isOf ? '✅ oficial' : '✏️ modificada', 2:Object.keys(d.pedidos).length + ' pedido' + (Object.keys(d.pedidos).length === 1 ? '' : 's'), 3:d.seed + (okAll ? ' ✅' : ' ❌'), 4:st};
+  let ns = 0;
+  h = h.replace(/<h4 class="srt-h">(\d) · ([^<]*)<\/h4>/g, (m0, num, tt)=>(ns++ ? '</div></details>' : '') + `<details class="srt-sec" data-sec="${num}"${srtSecOpen(num) ? ' open' : ''}><summary><span>${num} · ${tt}</span><small>${esc(info[num] || '')}</small></summary><div class="srt-body">`) + (ns ? '</div></details>' : '');
   h += `<details style="margin-top:18px"><summary class="srt-h" style="cursor:pointer;margin:0">Cómo funciona el sorteo</summary><ol class="fecha-sub" style="padding-left:1.2em">
     <li>Los grupos salen de la tabla final. Grupo 1 = 1º de A, 2º de B, 3º de C y 4º de D; Grupo 2 = 1º de B, 2º de C, 3º de D y 4º de A; y así. Copa Plata usa el mismo reparto con los puestos 5 al 8.</li>
     <li>Dentro de cada grupo todos juegan contra todos una vez. Se sortea en qué fecha va cada cruce, así cada DT descubre su rival junto con su horario.</li>
@@ -304,7 +326,7 @@ function liveRender(){
   const D = liveDrawn(), T = K.TEAMS, f = LIVE.f, hh = ts=>new Date(ts).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'});
   const per = [0,1,2].map(j=>res.matches.filter((m,i)=>m.j===j && D.has(i)).length), tot = per[0]+per[1]+per[2];
   const est = c.test ? 'Prueba' : c.open ? 'Abierto' : c.closedAt ? 'Cerrado' : 'Sin abrir';
-  let h = `<div class="live-h"><span class="ttl">📡 En vivo</span><span class="live-n">${tot}<small> / 48</small></span><span class="pill"><i class="dot${LIVE.on ? ' on' : ''}"></i>${LIVE.on ? 'Conectado' : 'Conectando…'} · ${est}</span></div>`;
+  let h = `<details class="srt-sec live" data-sec="live"${srtSecOpen('live') ? ' open' : ''}><summary class="live-h"><span class="ttl">📡 En vivo</span><span class="live-n">${tot}<small> / 48</small></span><span class="pill"><i class="dot${LIVE.on ? ' on' : ''}"></i>${LIVE.on ? 'Conectado' : 'Conectando…'} · ${est}</span></summary>`;
   h += `<div class="live-bars">${per.map((n,j)=>`<div class="bar"><span>Fecha ${j+1}</span><span class="tr"><i style="width:${Math.round(n/16*100)}%"></i></span><b>${n}/16</b></div>`).join('')}</div>`;
   const pend = res.matches.map((m,i)=>i).filter(i=>!D.has(i));
   if(pend.length && (c.open || c.test)) h += `<button type="button" class="close-btn" data-fill="1" style="background:#E5322D;color:#fff;border-color:transparent">⚡ Completar faltantes (${pend.length} partido${pend.length===1?'':'s'})</button><p class="fecha-sub" style="margin:-2px 0 10px">Para los clubes que no están presentes: saca de una vez todos los partidos que faltan. Aparecen en el panel de todos como «sorteado por el organizador». No cambia ningún resultado: los fija la semilla.</p>`;
@@ -322,8 +344,11 @@ function liveRender(){
   h += `<div class="live-day">Clubes que aún no terminan (${falta.length})</div><div class="srt-chips">${falta.map(t=>`<span class="qchip">${esc(t.name)} · ${done[t.id]}/3</span>`).join('') || '<span class="fecha-sub">Todos sacaron sus 3 fechas 🎉</span>'}</div>`;
   const rec = Array.from(D.entries()).sort((a,b)=>b[1].at-a[1].at).slice(0,10);
   h += `<div class="live-day">Últimos sorteos</div>${rec.length ? rec.map(([mi,x])=>{ const m = res.matches[mi], o = m.a===x.by ? m.b : m.a; if(x.by === -1) return `<div class="live-feed"><b>${hh(x.at)}</b> ⚡ Organizador completó la Fecha ${m.j+1}: ${esc(T[m.a].name)} vs ${esc(T[m.b].name)}, ${m.slot.day} ${m.slot.time}</div>`; return `<div class="live-feed"><b>${hh(x.at)}</b> ${esc(T[x.by].name)} sacó la Fecha ${m.j+1}: vs ${esc(T[o].name)}, ${m.slot.day} ${m.slot.time}, ${m.st === 'SM' ? 'San Miguel' : 'Los Sauces'}</div>`; }).join('') : '<p class="fecha-sub">Todavía nadie ha sorteado.</p>'}`;
+  h += '</details>';
   if(box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }   /* sin cambios no se redibuja (los botones no se mueven bajo el dedo) */
 }
+document.getElementById('sorteoBox').addEventListener('toggle', srtSecToggle, true);
+document.getElementById('liveAdm').addEventListener('toggle', srtSecToggle, true);
 document.getElementById('liveAdm').addEventListener('click', async e=>{
   const b = e.target.closest('[data-lf]'); if(b){ LIVE.f = +b.dataset.lf; liveRender(); return; }
   const fb = e.target.closest('[data-fill]'); if(!fb || fb.disabled) return;
